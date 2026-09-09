@@ -9,7 +9,7 @@ import L from './leaflet.js';
 import 'leaflet.markercluster';
 
 import { DB, ZONES, BORDERS, MASK, ROUTES, ICONS, LABELS, METRO, PARKS, PARK_AMENITIES, COUNTS } from '../lib/db.js';
-import { CATS, CATLABEL, COLOUR, PROMISE, VISION, edgeOn, glyphOn } from '../lib/categories.js';
+import { ALL_ICON, CATS, CATLABEL, CAT_ICON, COLOUR, PROMISE, VISION, edgeOn, glyphOn } from '../lib/categories.js';
 import { CARTO_LABELS, TILES } from '../lib/basemap.js';
 
 /* The markup lives in WellnessMap.astro. If it is not on the page — a stray
@@ -40,12 +40,21 @@ document.getElementById('foot').textContent =
   + 'Last reviewed September 2026. Not medical advice, and worth ringing ahead before you travel.';
 
 /* ---------- controls ---------- */
+/* One button per category, drawn as the glyph its pins carry with the category
+   colour as a dot in the corner. The name is in the tooltip: the same two cues
+   a pin gives you, in the same order. */
 const segEl = document.getElementById('seg');
-const TABS = [['all','Everything',null]].concat(CATS.map(c => [c.k, c.label, c.c]));
-TABS.forEach(([k,label,col]) => {
+const TABS = [['all', 'Everything', null, ALL_ICON]]
+  .concat(CATS.map(c => [c.k, c.label, c.c, ICONS[CAT_ICON[c.k]] || '']));
+TABS.forEach(([k, label, col, glyph]) => {
   const b = document.createElement('button');
-  b.innerHTML = (col ? `<span class="dot" style="background:${col}"></span>` : '') + esc(label);
+  b.className = 'ib';
+  b.type = 'button';
+  b.dataset.tip = label;
+  b.setAttribute('aria-label', label);
   b.setAttribute('aria-pressed', state.cat === k);
+  b.innerHTML = `<svg viewBox="0 0 24 24">${glyph}</svg>`
+    + (col ? `<i style="background:${col}"></i>` : '');
   b.onclick = () => { state.cat = k; state.sub = 'all'; state.active = null; syncSeg(); syncSub(); render(); };
   segEl.appendChild(b);
 });
@@ -70,16 +79,29 @@ areaEl.innerHTML = '<option value="all">All areas</option>'
       + g.items.map(a => `<option>${esc(a)}</option>`).join('') + '</optgroup>').join('');
 areaEl.onchange = () => { state.area = areaEl.value; restyleZones(); render(); };
 
+/* The sub-categories of whichever category is showing, each drawn as the exact
+   glyph its pins carry. Nothing here is labelled in words, because the glyph is
+   what you have to recognise on the map. */
 const subEl = document.getElementById('sub');
 function syncSub(){
   const c = CATS.find(x => x.k === state.cat);
   subEl.style.display = c ? '' : 'none';
+  subEl.innerHTML = '';
   if (!c) return;
-  subEl.innerHTML = '<option value="all">All sub-categories</option>'
-    + c.subs.map(s => `<option value="${s}">${esc(LABELS[s])}</option>`).join('');
-  subEl.value = state.sub;
+  const add = (key, label, glyph) => {
+    const b = document.createElement('button');
+    b.className = 'ib';
+    b.type = 'button';
+    b.dataset.tip = label;
+    b.setAttribute('aria-label', label);
+    b.setAttribute('aria-pressed', state.sub === key);
+    b.innerHTML = `<svg viewBox="0 0 24 24">${glyph}</svg>`;
+    b.onclick = () => { state.sub = state.sub === key ? 'all' : key; syncSub(); render(); };
+    subEl.appendChild(b);
+  };
+  add('all', 'All of ' + c.label.toLowerCase(), ALL_ICON);
+  c.subs.forEach(k => add(k, LABELS[k] || k, ICONS[k] || ''));
 }
-subEl.onchange = () => { state.sub = subEl.value; render(); };
 
 const qEl = document.getElementById('q');
 qEl.oninput = () => { state.q = qEl.value.toLowerCase().trim(); render(); };
@@ -100,8 +122,38 @@ function setView(v){
    city's actual outline is drawn from the same source. */
 const [BS, BW, BN, BE] = DB.box;
 const CITY = L.latLngBounds([BS, BW], [BN, BE]);
-const map = L.map('map', {zoomControl:false, maxBounds:CITY.pad(0.04),
-  maxBoundsViscosity:1, minZoom:10, maxZoom:19}).fitBounds(CITY);
+const map = L.map('map', {zoomControl:false, maxBoundsViscosity:1, minZoom:10, maxZoom:19});
+
+/* The map runs the full width of the window and the panel floats on top of it,
+   so the visible half is not the whole canvas. Every fit is padded by whatever
+   the panel is covering — the left of the screen on a laptop, the bottom of it
+   on a phone — which is what keeps the city centred in the part you can see. */
+function fitPad(extra){
+  const panel = document.querySelector('.panel');
+  const gap = 22;
+  if (!panel || !panel.offsetWidth) return {padding:[extra, extra]};
+  const wide = window.matchMedia('(min-width: 821px)').matches;
+  return wide
+    ? {paddingTopLeft:[panel.offsetWidth + gap, extra], paddingBottomRight:[extra, extra]}
+    : {paddingTopLeft:[extra, extra], paddingBottomRight:[extra, panel.offsetHeight + gap]};
+}
+/* The leash.
+   maxBounds does not merely pin the centre: Leaflet keeps the whole viewport
+   inside it, and on a phone at the minimum zoom the viewport is several times
+   the size of the city. Any leash tight enough to be worth having therefore
+   fights the framing above and quietly re-centres the city — behind the panel.
+   So the leash comes off for the length of a fit, and is retied afterwards
+   around wherever the map actually landed. Panning is still bounded; it is just
+   bounded by the view we chose rather than the other way round. */
+function fitTo(bounds, opts){
+  map.setMaxBounds(null);
+  map.fitBounds(bounds, opts);
+  const here = map.getBounds().pad(0.25);
+  map.setMaxBounds(L.latLngBounds(CITY.getSouthWest(), CITY.getNorthEast()).extend(here));
+}
+const fitCity = () => fitTo(CITY, fitPad(24));
+fitCity();
+fitCity();
 L.control.zoom({position:'bottomright'}).addTo(map);
 map.createPane('zones').style.zIndex = 350;
 const linePane = map.createPane('lines');
@@ -602,7 +654,7 @@ function drawList(items){
       <button class="card-main">
         <h3>${esc(r.n)}</h3>
         <div class="meta">
-          <i class="key" style="background:${col};color:${glyphOn(col)}">${ico(r.g)}${esc(LABELS[r.g])}</i>
+          <i class="key" style="background:${col};color:${glyphOn(col)}" data-tip="${esc(LABELS[r.g])}">${ico(r.g)}</i>
           <i>${esc(r.raw || r.a)}</i>
           ${r.rg ? `<i>${esc(CORPS[r.rg].label)}</i>` : ''}
           ${r.p ? `<i>${esc(r.p)}</i>` : ''}
@@ -641,8 +693,8 @@ function render(keep){
     const pts = items.filter(r => r.lat != null).map(r => [r.lat, r.lon]);
     /* Unfiltered, sit on the whole city. Filtered, close in on what is left. */
     const wide = state.area === 'all' && state.sub === 'all' && state.q === '' && state.cat === 'all';
-    if (wide || !pts.length) map.fitBounds(CITY);
-    else map.fitBounds(L.latLngBounds(pts), {padding:[40,40], maxZoom:15});
+    if (wide || !pts.length) fitCity();
+    else fitTo(L.latLngBounds(pts), {...fitPad(40), maxZoom:15});
   }
 }
 
@@ -652,7 +704,16 @@ render();
 /* Leaflet measures the container once. If fonts, the controls bar wrapping or an
    embedding frame change its height afterwards, tiles are laid out for the old
    size, so re-measure on load, on resize and whenever the box actually changes. */
-const remeasure = () => map.invalidateSize({animate:false});
+/* Re-framing on resize is right until somebody has moved the map themselves;
+   after that it is their view, not ours. */
+let touched = false;
+['pointerdown', 'wheel'].forEach(ev =>
+  map.getContainer().addEventListener(ev, () => { touched = true; }, {passive:true}));
+const remeasure = () => {
+  map.invalidateSize({animate:false});
+  const wide = state.area === 'all' && state.sub === 'all' && state.q === '' && state.cat === 'all';
+  if (!touched && wide && state.view === 'map') fitCity();
+};
 window.addEventListener('load', remeasure);
 window.addEventListener('resize', remeasure);
 window.addEventListener('orientationchange', remeasure);

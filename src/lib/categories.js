@@ -6,6 +6,22 @@
 export const VISION = '#571541';   /* Plum Vision  */
 export const PROMISE = '#FFEBDB';  /* Plum Promise */
 
+/* Each category borrows the glyph of the sub-category that stands for it best,
+   so a filter button and the pins it filters to are drawn the same way. */
+export const CAT_ICON = {
+  'Activities': 'run',
+  'Communities': 'group',
+  'Food': 'healthy',
+  'Health Centers': 'hospital',
+  'Health Investments': 'gym',
+  'Mental Health': 'therapy',
+};
+
+/* Four dots: no filter, everything showing. */
+export const ALL_ICON =
+  '<circle cx="8.5" cy="8.5" r="2.1"/><circle cx="15.5" cy="8.5" r="2.1"/>'
+  + '<circle cx="8.5" cy="15.5" r="2.1"/><circle cx="15.5" cy="15.5" r="2.1"/>';
+
 export const CATS = [
   {
     k: 'Activities', label: 'Activities', c: '#92BD33',

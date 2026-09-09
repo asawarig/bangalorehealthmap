@@ -9,10 +9,19 @@ Live at: _add the published URL once Pages is switched on_
 
 ## What it is
 
-Left column is a filterable list of every entry, centre is a Leaflet map, and
-the ground is coloured by which of the five Greater Bengaluru Authority city
-corporations a place sits in. Everything outside the gazetted city boundary is
-masked off, so the map reads as Bengaluru rather than a rectangle of tiles.
+The map fills the window. Everything else — the search, the filters, the count
+and the list — sits in one rounded card floating over it on the left, clear of
+every edge, with the filters and the result count pinned to the top of the card
+while the list scrolls underneath. The ground is coloured by which of the five
+Greater Bengaluru Authority city corporations a place sits in, and everything
+outside the gazetted city boundary is masked off, so the map reads as Bengaluru
+rather than a rectangle of tiles.
+
+Filtering is done with the pins themselves rather than with words: a row of
+category glyphs, each carrying its category's colour as a dot, and under it the
+sub-category glyphs — the exact icons the pins on the map are drawn with. What
+each one means is in its tooltip. That is the same pair of cues a pin gives
+you: colour for the category, glyph for the sub-category.
 
 - **395 entries** across six categories and 30 sub-categories, each with a
   hand-drawn icon.

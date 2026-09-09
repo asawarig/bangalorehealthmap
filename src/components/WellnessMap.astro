@@ -16,33 +16,49 @@ validateEntries();
 ---
 
 <div id="app">
-  <header class="head">
-    <h1 class="wordmark">Bengaluru <span>Wellness</span> Map</h1>
-    <p class="tagline">Where the city runs, lifts, swims, eats and gets looked after.</p>
-    <span class="flag" id="flag"></span>
-  </header>
-  <div class="controls">
-    <div class="seg" id="seg" role="group" aria-label="Category"></div>
-    <select id="rg" aria-label="Corporation"></select>
-    <select id="area" aria-label="Area"></select>
-    <select id="sub" aria-label="Sub-category"></select>
-    <input type="search" id="q" placeholder="Search name, area or tag" aria-label="Search" />
-    <span class="count" id="count"></span>
-    <div class="viewtog" role="group" aria-label="View">
-      <button id="v-map" aria-pressed="true">Map</button><button id="v-grid" aria-pressed="false">Grid</button>
+  <div id="map"><div class="tilewarn" id="tilewarn"></div></div>
+
+  <!-- Everything that is not the map lives in one card floating over it. The
+       head holds the filters and the count and never scrolls; the list moves
+       underneath it. -->
+  <section class="panel" aria-label="Places">
+    <div class="panel-head">
+      <div class="brand">
+        <h1 class="wordmark">Bengaluru <span>Wellness</span> Map</h1>
+        <p class="tagline">Where the city runs, lifts, swims, eats and gets looked after.</p>
+        <span class="flag" id="flag"></span>
+      </div>
+
+      <input type="search" id="q" placeholder="Search name, area or tag" aria-label="Search" />
+
+      <div class="iconbar" id="seg" role="group" aria-label="Category"></div>
+      <div class="iconbar subs" id="sub" role="group" aria-label="Sub-category"></div>
+
+      <div class="selects">
+        <select id="rg" aria-label="Corporation"></select>
+        <select id="area" aria-label="Area"></select>
+      </div>
+
+      <div class="switches">
+        <div class="seg2" role="group" aria-label="View">
+          <button id="v-map" aria-pressed="true">Map</button><button id="v-grid" aria-pressed="false">Grid</button>
+        </div>
+        <div class="seg2" role="group" aria-label="Map style">
+          <button id="m-regions" aria-pressed="true">Regions</button><button id="m-plain" aria-pressed="false">Plain</button>
+        </div>
+        <div class="seg2" role="group" aria-label="Overlays">
+          <button id="l-metro" aria-pressed="true">Metro</button><button id="l-parks" aria-pressed="true">Parks</button>
+        </div>
+        <span class="count" id="count"></span>
+      </div>
     </div>
-    <div class="viewtog" role="group" aria-label="Map style">
-      <button id="m-regions" aria-pressed="true">Regions</button><button id="m-plain" aria-pressed="false">Plain</button>
+
+    <div class="panel-body" id="list">
+      <div id="notice"></div>
+      <div class="cards" id="cards"></div>
+      <div class="foot" id="foot"></div>
     </div>
-    <div class="viewtog" role="group" aria-label="Overlays">
-      <button id="l-metro" aria-pressed="true">Metro</button><button id="l-parks" aria-pressed="true">Parks</button>
-    </div>
-  </div>
-  <main>
-    <div id="list"><div id="notice"></div><div class="cards" id="cards"></div></div>
-    <div id="map"><div class="tilewarn" id="tilewarn"></div></div>
-  </main>
-  <div class="foot" id="foot"></div>
+  </section>
 </div>
 
 <script>
