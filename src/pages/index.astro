@@ -1,0 +1,12 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import WellnessMap from '../components/WellnessMap.astro';
+import { COUNTS } from '../lib/db.js';
+
+const description = `${COUNTS.total} places, routes, clinics, kitchens and communities `
+  + 'for looking after yourself in Bengaluru, on one interactive map.';
+---
+
+<BaseLayout title="Bengaluru Wellness Map" description={description}>
+  <WellnessMap />
+</BaseLayout>

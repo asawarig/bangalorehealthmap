@@ -1,0 +1,37 @@
+---
+/* The page shell. `embed` strips it back to what an iframe needs: no indexing,
+   no scrollbars of its own, and a viewport-height body so the map fills the
+   frame Webflow gives it. */
+interface Props {
+  title: string;
+  description: string;
+  embed?: boolean;
+}
+const { title, description, embed = false } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+---
+
+<!doctype html>
+<html lang="en-IN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    {embed ? (
+      <meta name="robots" content="noindex, follow" />
+    ) : (
+      <>
+        <link rel="canonical" href={canonical} />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
+        <meta property="og:url" content={canonical} />
+        <meta name="twitter:card" content="summary_large_image" />
+      </>
+    )}
+  </head>
+  <body class={embed ? 'is-embed' : undefined}>
+    <slot />
+  </body>
+</html>
