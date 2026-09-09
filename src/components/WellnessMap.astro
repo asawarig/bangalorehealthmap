@@ -1,0 +1,47 @@
+---
+/* The map itself: header, filter bar, list and Leaflet canvas.
+ *
+ * The stylesheet and the client script are imported here rather than in a page,
+ * so dropping <WellnessMap /> into any route brings everything it needs with it.
+ */
+import 'leaflet/dist/leaflet.css';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import '../styles/wellness-map.css';
+
+import { validateEntries } from '../lib/validate.js';
+
+/* Runs on `astro build` and on every save in dev. A malformed listing stops the
+   build with the id and the reason rather than shipping a broken pin. */
+validateEntries();
+---
+
+<div id="app">
+  <header class="head">
+    <h1 class="wordmark">Bengaluru <span>Wellness</span> Map</h1>
+    <p class="tagline">Where the city runs, lifts, swims, eats and gets looked after.</p>
+    <span class="flag" id="flag"></span>
+  </header>
+  <div class="controls">
+    <div class="seg" id="seg" role="group" aria-label="Category"></div>
+    <select id="rg" aria-label="Corporation"></select>
+    <select id="area" aria-label="Area"></select>
+    <select id="sub" aria-label="Sub-category"></select>
+    <input type="search" id="q" placeholder="Search name, area or tag" aria-label="Search" />
+    <span class="count" id="count"></span>
+    <div class="viewtog" role="group" aria-label="View">
+      <button id="v-map" aria-pressed="true">Map</button><button id="v-grid" aria-pressed="false">Grid</button>
+    </div>
+    <div class="viewtog" role="group" aria-label="Map style">
+      <button id="m-regions" aria-pressed="true">Regions</button><button id="m-plain" aria-pressed="false">Plain</button>
+    </div>
+  </div>
+  <main>
+    <div id="list"><div id="notice"></div><div class="cards" id="cards"></div></div>
+    <div id="map"><div class="tilewarn" id="tilewarn"></div></div>
+  </main>
+  <div class="foot" id="foot"></div>
+</div>
+
+<script>
+  import '../scripts/wellness-map.js';
+</script>
