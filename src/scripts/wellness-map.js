@@ -326,12 +326,18 @@ const ABOUT = () => `
  <summary>Why this page exists</summary>
  <div class="body">
   <div class="rule"></div>
-  <p>Bengaluru has more ways to look after yourself than any one person can keep track of.
-   The information exists, but it sits in group chats, Instagram accounts, Reddit threads and
-   the memory of whoever has lived here longest. Ask five people where to swim and you get
-   five answers, all of them from 2019.</p>
-  <p>So we built the list we wanted when we moved here. Hospitals and diagnostic labs next to
-   run clubs and cycling routes, because in real life you need both, usually in the same month.</p>
+  <p class="lead">Where would you start if you decided to get fit tomorrow?</p>
+  <p>We asked ourselves that question and realised we didn't have an answer that didn't involve
+   asking an LLM. So we did what most people do. We trawled Twitter and Instagram, opened
+   seventeen browser tabs, asked friends, looked at Google Maps reviews, and still felt like we
+   were missing the good stuff.</p>
+  <p>So we decided to put together this map that we could open any time we felt like this was the
+   day we were going to work out. Every gym, run club, cycling route, therapy clinic, dance
+   studio, sound bath and salt cave we could find, in one place. Some are famous. Some are the
+   kind of place you accidentally notice when stuck in a traffic jam at Sony signal.</p>
+  <p>Have a look. There might be something in your part of town that you didn't know was there.</p>
+  <p>This is by no means an exhaustive list. So if you know something we've missed, write to us.
+   We'd like to add it.</p>
   <h4>How to read it</h4>
   <ol>
    <li>A pin's colour is its category and its icon is the sub-category. The
@@ -419,7 +425,7 @@ function drawNotice(items){
   const lg = document.getElementById('legend');
   if (lg) lg.innerHTML = CATS.map(c => {
     const n = E.filter(r => r.c === c.k).length;
-    return `<div><s style="background:${c.c}"></s>${esc(c.label)}<em>${esc(c.cn)} · ${n}</em></div>`;
+    return `<div><s style="background:${c.c}"></s>${esc(c.label)}<em>${n}</em></div>`;
   }).join('');
 }
 

@@ -8,28 +8,28 @@ export const PROMISE = '#FFEBDB';  /* Plum Promise */
 
 export const CATS = [
   {
-    k: 'Activities', label: 'Activities', c: '#92BD33', cn: 'Plum Growth',
+    k: 'Activities', label: 'Activities', c: '#92BD33',
     subs: ['run', 'cycle', 'swim', 'badminton', 'padel', 'tennis', 'cricket',
            'turf', 'multisport', 'climb', 'play', 'golf', 'stadium', 'act_gym'],
   },
   {
-    k: 'Communities', label: 'Communities', c: '#FF4052', cn: 'Plum Red',
+    k: 'Communities', label: 'Communities', c: '#FF4052',
     subs: ['group', 'hangout', 'account'],
   },
   {
-    k: 'Food', label: 'Food', c: '#FFBF21', cn: 'Sunshine Yellow',
+    k: 'Food', label: 'Food', c: '#FFBF21',
     subs: ['healthy', 'indulgent'],
   },
   {
-    k: 'Health Centers', label: 'Health centres', c: '#429CD8', cn: 'Clear Sky',
+    k: 'Health Centers', label: 'Health centres', c: '#429CD8',
     subs: ['hospital', 'clinic', 'lab', 'newage'],
   },
   {
-    k: 'Health Investments', label: 'Health investments', c: VISION, cn: 'Plum Vision',
+    k: 'Health Investments', label: 'Health investments', c: VISION,
     subs: ['gym', 'yoga', 'retail', 'bike', 'wearable'],
   },
   {
-    k: 'Mental Health', label: 'Mental health', c: PROMISE, cn: 'Plum Promise',
+    k: 'Mental Health', label: 'Mental health', c: PROMISE,
     subs: ['therapy', 'alttherapy'],
   },
 ];
