@@ -8,7 +8,7 @@
 import L from './leaflet.js';
 import 'leaflet.markercluster';
 
-import { DB, ZONES, BORDERS, MASK, ROUTES, ICONS, LABELS, COUNTS } from '../lib/db.js';
+import { DB, ZONES, BORDERS, MASK, ROUTES, ICONS, LABELS, METRO, PARKS, PARK_AMENITIES, COUNTS } from '../lib/db.js';
 import { CATS, CATLABEL, COLOUR, PROMISE, VISION, edgeOn, glyphOn } from '../lib/categories.js';
 import { CARTO_LABELS, TILES } from '../lib/basemap.js';
 
@@ -35,6 +35,8 @@ document.getElementById('foot').textContent =
   + COUNTS.unpinned + ' with no fixed address, ' + COUNTS.outside + ' starting outside the city limits. '
   + 'City and corporation boundaries from the Greater Bengaluru Authority delimitation '
   + 'notification of 19 July 2025 (' + DB.gba_km2 + ' km²), via OpenCity. '
+  + 'Metro alignment from OpenStreetMap; ' + PARKS.features.length
+  + ' parks from the BBMP parks register, as points rather than outlines. '
   + 'Last reviewed September 2026. Not medical advice, and worth ringing ahead before you travel.';
 
 /* ---------- controls ---------- */
@@ -106,6 +108,9 @@ const linePane = map.createPane('lines');
 linePane.style.zIndex = 400; linePane.style.pointerEvents = 'none';
 const labelPane = map.createPane('labels');
 labelPane.style.zIndex = 450; labelPane.style.pointerEvents = 'none';
+const refPane = map.createPane('reference');
+refPane.style.zIndex = 430; refPane.style.pointerEvents = 'none';
+map.createPane('parks').style.zIndex = 440;
 const maskPane = map.createPane('mask');
 maskPane.style.zIndex = 470; maskPane.style.pointerEvents = 'none';
 /* Basemaps come from src/lib/basemap.js, keyed and in fallback order. Some
@@ -138,10 +143,104 @@ function useTiles(i){
   paintMode();
 }
 /* ---------- region colouring ----------
-   The city is filled with one colour per GBA city corporation. The blocks inside
-   each corporation are the catchments of its entries, kept only as texture: they
-   are all one colour now, separated by pale seams. Nothing crosses a boundary, so
-   the fill and the boundary line always agree. */
+   The city is filled with one hue per GBA city corporation, and inside each
+   corporation every area takes one of five shades of that hue, chosen so that
+   no two areas sharing a border take the same one. The blocks are the
+   catchments of the entries, so the cells of one area read as a single patch
+   and the patch next door reads as a different one, while the five
+   corporations still read as five families. Nothing crosses a boundary, so the
+   fill and the boundary line always agree.
+
+   The corporation hues sit deliberately off the brand wheel — green, violet,
+   terracotta, olive, rose — because the ground and the pins say different
+   things. A pin in Plum Red is a Community; the ground under it is a
+   corporation, and the two should never be read as the same statement. The
+   hues are the midpoints of the gaps between the six category colours, and
+   every shade of every one of them stays a long way from every pin colour. */
+
+const hexToHsl = (hex) => {
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.substr(i, 2), 16) / 255);
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+  const l = (max + min) / 2;
+  if (!d) return [0, 0, l * 100];
+  const h = max === r ? ((g - b) / d + (g < b ? 6 : 0))
+          : max === g ? (b - r) / d + 2
+          : (r - g) / d + 4;
+  return [h * 60, (d / (1 - Math.abs(2 * l - 1))) * 100, l * 100];
+};
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+/* Which areas share a border. The zone cells come out of one tessellation, so
+   two cells that touch carry the same vertex to the fifth decimal, and a shared
+   vertex is a shared border. Cheaper and more exact than testing geometry. */
+function areaNeighbours(){
+  const ringsOf = g => g.type === 'Polygon' ? g.coordinates : g.coordinates.flat();
+  const atVertex = new Map(), nb = new Map();
+  ZONES.features.forEach(f => {
+    const {rg, area} = f.properties;
+    if (!rg || !area) return;
+    const id = rg + '|' + area;
+    if (!nb.has(id)) nb.set(id, new Set());
+    ringsOf(f.geometry).forEach(ring => ring.forEach(([x, y]) => {
+      const k = x.toFixed(5) + ',' + y.toFixed(5);
+      if (!atVertex.has(k)) atVertex.set(k, new Set());
+      atVertex.get(k).add(id);
+    }));
+  });
+  atVertex.forEach(ids => {
+    const list = [...ids];
+    for (let i = 0; i < list.length; i++)
+      for (let j = i + 1; j < list.length; j++) {
+        nb.get(list[i]).add(list[j]);
+        nb.get(list[j]).add(list[i]);
+      }
+  });
+  return nb;
+}
+
+const SHADES = 5;      /* a tessellation is a planar graph, so five is plenty */
+const SPREAD = 50;     /* lightness range the five shades are spread across */
+const AREA_SHADE = {};
+(function shadeAreas(){
+  const nb = areaNeighbours();
+  const corpOf = id => id.slice(0, id.indexOf('|'));
+  const byRg = {};
+  nb.forEach((_, id) => { (byRg[corpOf(id)] = byRg[corpOf(id)] || []).push(id); });
+
+  Object.keys(byRg).forEach(rg => {
+    const corp = CORPS[rg];
+    if (!corp) return;
+    const [h, s, l] = hexToHsl(corp.c);
+    const pal = [];
+    for (let i = 0; i < SHADES; i++) {
+      const t = i / (SHADES - 1) - 0.5;
+      /* Chroma leans against the lightness, so the pale end does not wash out
+         to grey and the dark end does not go muddy. */
+      pal.push({sat: clamp(s * (1 - t * 0.5), 8, 90), lig: clamp(l + t * SPREAD, 22, 84)});
+    }
+    const sameCorp = id => [...nb.get(id)].filter(n => corpOf(n) === rg);
+    /* Busiest area first, and each one takes the shade furthest in lightness
+       from whatever its neighbours already hold — the usual greedy colouring,
+       which on a map this shape never needs all five. */
+    const order = byRg[rg].slice().sort((a, b) => sameCorp(b).length - sameCorp(a).length || (a < b ? -1 : 1));
+    const chosen = new Map();
+    order.forEach(id => {
+      const taken = sameCorp(id).map(n => chosen.get(n)).filter(i => i !== undefined);
+      let best = 0, bestGap = -1;
+      pal.forEach((p, i) => {
+        const gap = taken.length ? Math.min(...taken.map(j => Math.abs(p.lig - pal[j].lig))) : Infinity;
+        if (gap > bestGap) { bestGap = gap; best = i; }
+      });
+      chosen.set(id, best);
+      AREA_SHADE[id] = `hsl(${h.toFixed(1)} ${pal[best].sat.toFixed(1)}% ${pal[best].lig.toFixed(1)}%)`;
+    });
+  });
+})();
+/* A cell the boundary data carries but no entry sits in has no shade of its
+   own, and falls back to the corporation's colour. */
+const zoneFill = (f) => AREA_SHADE[f.properties.rg + '|' + f.properties.area]
+  || (CORPS[f.properties.rg] || {}).c || VISION;
+
 const zoneLayer = L.geoJSON(ZONES, {
   pane:'zones',
   style: f => zoneStyle(f, false),
@@ -162,7 +261,7 @@ const zoneLayer = L.geoJSON(ZONES, {
 function zoneStyle(f, hot){
   const c = CORPS[f.properties.rg];
   const on = state.rg === 'all' || state.rg === f.properties.rg;
-  return {fillColor:c.c, color:PROMISE, weight:1, opacity:.8,
+  return {fillColor:zoneFill(f), color:PROMISE, weight:1, opacity:.8,
     fillOpacity:(c.op + (hot ? .1 : 0)) * (on ? 1 : .22)};
 }
 function restyleZones(){ zoneLayer.eachLayer(l => l.setStyle(zoneStyle(l.feature, false))); }
@@ -223,6 +322,58 @@ const gbaLayer = L.geoJSON({type:'FeatureCollection',
 const borderLayer = L.geoJSON({type:'FeatureCollection',
     features:BORDERS.features.filter(f => f.properties.kind === 'corp')},
   {pane:'lines', interactive:false, style:{color:VISION, weight:2, opacity:.8, fill:false}});
+
+/* ---------- the metro and the parks ----------
+   Neither is an entry: they are the two bits of the city that tell you whether
+   a place on this map is actually reachable, and whether there is somewhere
+   green next to it. Both sit above the coloured ground and under the pins, and
+   both can be switched off.
+
+   The metro is the Namma Metro alignment as OpenStreetMap has it, drawn with a
+   pale casing so the line stays readable over every one of the ground shades.
+   The parks are BBMP's own register, one dot per park, with whatever the
+   register knows about it: the ward, the opening hours, the size, and whether
+   it has a toilet, a gym or something for children. They are points rather
+   than outlines, so a dot says where a park is, not how far it spreads. */
+const metroCasing = L.geoJSON(METRO, {pane:'reference', interactive:false,
+  style:{color:PROMISE, weight:5.5, opacity:.85, lineCap:'round', lineJoin:'round'}});
+const metroLine = L.geoJSON(METRO, {pane:'reference', interactive:false,
+  style:{color:'#2A0F20', weight:2.4, opacity:.9, lineCap:'round', lineJoin:'round'}});
+/* 610 dots is more than SVG wants in the DOM, so they get a canvas. They are
+   clickable — a park with a toilet and play equipment is worth knowing about —
+   but they sit under the entry pins, which always win a click. */
+const parksRenderer = L.canvas({pane:'parks', padding:.4});
+function parkPopup(p){
+  const rows = [p.w && ['Ward', p.w], p.t && ['Open', p.t],
+                p.sqm && ['Size', p.sqm.toLocaleString('en-IN') + ' m²'],
+                p.a && p.a.length && ['Has', p.a.map(k => PARK_AMENITIES[k]).join(', ')]].filter(Boolean);
+  return `<div class="pop">
+    <div class="kind">BBMP park</div>
+    <h4>${esc(p.n || 'Unnamed park')}</h4><div class="rule"></div>
+    ${rows.length ? `<dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : ''}
+  </div>`;
+}
+const parkLayer = L.geoJSON(PARKS, {pane:'parks', renderer:parksRenderer,
+  pointToLayer: (f, latlng) => L.circleMarker(latlng, {radius:3, renderer:parksRenderer,
+    color:PROMISE, weight:.8, opacity:.6, fillColor:'#17532F', fillOpacity:.85}),
+  onEachFeature(f, lyr){
+    lyr.bindTooltip(f.properties.n || 'Park', {direction:'top', className:'pin-label'});
+    lyr.bindPopup(() => parkPopup(f.properties), {maxWidth:260, minWidth:220});
+  }});
+
+const overlays = {
+  metro: {on:true, el:document.getElementById('l-metro'), layers:[metroCasing, metroLine]},
+  parks: {on:true, el:document.getElementById('l-parks'), layers:[parkLayer]},
+};
+function syncOverlay(k){
+  const o = overlays[k];
+  o.layers.forEach(l => { if (o.on) { if (!map.hasLayer(l)) l.addTo(map); } else if (map.hasLayer(l)) map.removeLayer(l); });
+  o.el.setAttribute('aria-pressed', o.on);
+}
+Object.keys(overlays).forEach(k => {
+  overlays[k].el.onclick = () => { overlays[k].on = !overlays[k].on; syncOverlay(k); };
+  syncOverlay(k);
+});
 
 let labelLayer = null;
 function paintMode(){
@@ -351,6 +502,11 @@ const ABOUT = () => `
    <li>The map stops at the gazetted city boundary. Nandi Hills, Ramanagara,
     Wonderla and 33 other places beyond it are listed without a pin rather than
     shrinking Bengaluru to fit them in.</li>
+   <li>Each area carries its own shade of its corporation's colour, so where one
+    neighbourhood ends and the next begins is visible without reading a label.</li>
+   <li>The dark line is the metro. The green dots are the parks BBMP has a record
+    of — click one for its hours and whether it has a toilet, a gym or something
+    for the children. Both layers switch off above the map.</li>
    <li>Nobody paid to be here. No sponsored slots, no affiliate links.</li>
   </ol>
   <h4>The colours</h4>

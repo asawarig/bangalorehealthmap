@@ -17,6 +17,12 @@ import ROUTES from '../data/routes.json';
 import ICONS from '../data/icons.json';
 import LABELS from '../data/labels.json';
 
+/* Two reference layers that are not entries: the Namma Metro alignment and
+   every park BBMP has a record of. See scripts/kml-to-geojson.mjs. */
+import METRO from '../data/metro.json';
+import PARKS from '../data/parks.json';
+import PARK_AMENITIES from '../data/park-amenities.json';
+
 /* A listing only has to carry the fields that say what it is and where it is.
    Everything optional is filled in here, so a short new row in entries.json
    renders the same as a row that came out of the original spreadsheet. */
@@ -59,7 +65,7 @@ export const DB = { entries, areas, corps, box: city.box, gba_km2: city.gba_km2 
 /* The rows exactly as they sit in entries.json, before the defaults above are
    filled in. The build-time check reads these so it sees what you typed. */
 export const RAW_ENTRIES = rows;
-export { ZONES, BORDERS, MASK, ROUTES, ICONS, LABELS };
+export { ZONES, BORDERS, MASK, ROUTES, ICONS, LABELS, METRO, PARKS, PARK_AMENITIES };
 
 /* Facts the page states in its header, footer and meta description. Counted
    once here so the copy can never drift from the data. */

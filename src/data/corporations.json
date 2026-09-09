@@ -2,36 +2,36 @@
  {
   "k": "Central",
   "label": "Bengaluru Central",
-  "c": "#FF4052",
-  "op": 0.3,
+  "c": "#4DB370",
+  "op": 0.5,
   "km2": 78
  },
  {
   "k": "North",
   "label": "Bengaluru North",
-  "c": "#429CD8",
-  "op": 0.3,
+  "c": "#7E5DB6",
+  "op": 0.5,
   "km2": 158
  },
  {
   "k": "East",
   "label": "Bengaluru East",
-  "c": "#FFBF21",
-  "op": 0.3,
+  "c": "#C86A41",
+  "op": 0.5,
   "km2": 163
  },
  {
   "k": "South",
   "label": "Bengaluru South",
-  "c": "#92BD33",
-  "op": 0.3,
+  "c": "#B3B540",
+  "op": 0.5,
   "km2": 146
  },
  {
   "k": "West",
   "label": "Bengaluru West",
-  "c": "#571541",
-  "op": 0.17,
+  "c": "#B96485",
+  "op": 0.5,
   "km2": 163
  }
 ]

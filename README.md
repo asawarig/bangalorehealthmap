@@ -22,7 +22,12 @@ masked off, so the map reads as Bengaluru rather than a rectangle of tiles.
 - **Trails can be drawn as lines** rather than pins, start to finish. See
   [Adding routes](#adding-routes).
 - **Regions / Plain** switches between the corporation colouring and a plain
-  basemap with street names.
+  basemap with street names. Each of the 102 areas carries its own shade of its
+  corporation's colour, picked so that no two areas sharing a border get the
+  same one.
+- **Metro and Parks** are two reference layers over the top: the Namma Metro
+  alignment, and 610 of BBMP's parks with their hours and amenities. Both
+  switch off.
 
 Two routes are built:
 
@@ -134,6 +139,42 @@ The area dropdown, the per-corporation counts and the tallies in the header and
 footer are all counted from the data at build time, so adding a listing is one
 edit in one file.
 
+## The metro and the parks
+
+Two reference layers, neither of which is an entry. They are built from KML by
+[`scripts/kml-to-geojson.mjs`](scripts/kml-to-geojson.mjs):
+
+```bash
+node scripts/kml-to-geojson.mjs <rail.kml> <parks.kml>
+```
+
+which writes `src/data/metro.json` and `src/data/parks.json`. The KMLs
+themselves are not committed, the same way the boundary KML and the entry
+spreadsheet are not.
+
+**The metro** comes from an OpenStreetMap extract of everything on rails in the
+city. Only `railway=subway` is drawn: that is Namma Metro. The same file also
+holds 374 `rail` ways, which are the mainline and suburban network, and 61
+`construction` ways which do not say which of the two they will become. Neither
+is drawn, because neither is the metro.
+
+**The parks** come from BBMP's own register, which is a working document rather
+than a clean dataset, and the script has to be defensive about it:
+
+- **Coordinates.** Some have lost their decimal point (`77331399`), some have
+  latitude and longitude the wrong way round. Both are repaired. 672 rows still
+  do not land anywhere in Bengaluru — around 500 of them sit in a cluster near
+  Harohalli, some 40 km southwest — and those are dropped rather than guessed
+  at. 610 of the 1,282 rows survive with a position that can be trusted.
+- **Personal details.** The register carries the maintenance contractors' names
+  and mobile numbers, and in 101 rows someone has typed them into the
+  opening-hours column. Nothing matching a phone number reaches the page, and
+  the script exits rather than write a file containing one. If you re-run it
+  against a newer export and it refuses, that guard is the reason.
+- **Names.** 147 rows are named after the work order rather than the park
+  ("Maintenance Of Park in ward no-174 ... (FOODYS PARK)"). Where one ends in a
+  bracketed name, that is used.
+
 ## Adding routes
 
 Entries whose shape matters can be drawn as a line instead of a pin. Add a
@@ -181,6 +222,8 @@ the CDN cache tiles.
 | What | Source | Licence |
 |---|---|---|
 | The 395 entries | Compiled by hand | Ours |
+| Metro alignment | OpenStreetMap extract, `railway=subway` | ODbL |
+| Parks | BBMP parks register | Government of Karnataka |
 | City and corporation boundaries | GBA delimitation notification, 19 July 2025, via [OpenCity](https://data.opencity.in/dataset/greater-bengaluru-authority-corporations-delimitation-2025) | Government of Karnataka, public domain |
 | Basemap tiles | CARTO Voyager | Free with attribution |
 | Underlying map data | OpenStreetMap contributors | ODbL |
@@ -209,12 +252,15 @@ The code is MIT; the data is not all ours to relicense.
 src/
   data/
     entries.json         the 395 listings — this is the file you edit
-    corporations.json    the five GBA corporations: label, colour, area
+    corporations.json    the five GBA corporations: label, hue, area
     city.json            the gazetted bounding box
     zones.json           per-area colour blocks, one per entry catchment
     borders.json         city outline and corporation seams
     mask.json            everything outside the boundary, painted over
     routes.json          traced trails, keyed by entry id
+    metro.json           the Namma Metro alignment
+    parks.json           BBMP parks: where, when open, what is in them
+    park-amenities.json  amenity keys -> the words in the popup
     icons.json           30 sub-category icons as SVG paths
     labels.json          sub-category keys -> the words on the card
   lib/
@@ -233,5 +279,6 @@ src/
   pages/
     index.astro          /
     embed.astro          /embed — the iframe version for Webflow
+scripts/kml-to-geojson.mjs   the two KML sources -> metro.json and parks.json
 webflow/embed-snippet.html   copy-paste into a Webflow Embed element
 ```
